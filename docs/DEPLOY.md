@@ -53,15 +53,19 @@ A one-shot script does the whole thing — Docker install, secret generation, an
 **Postgres + API + Caddy (auto-TLS)** via `deploy/docker-compose.prod.yml` (the API is not exposed
 directly; only Caddy serves 80/443).
 
+The script pre-sets `API_DOMAIN=slotsure.ayushbaluni.in` (change it in `deploy/setup-vm.sh` or in
+`.env` for a different host), so deploy is just: add DNS, run twice.
+
 ```bash
 git clone <your-repo> slotsure && cd slotsure
-bash deploy/setup-vm.sh          # run #1: installs Docker + generates .env secrets, then stops
-#   edit .env -> set API_DOMAIN=api.yourdomain.com ; point its DNS A record at this VM's public IP
+bash deploy/setup-vm.sh          # run #1: installs Docker + generates .env (API_DOMAIN pre-set), stops
+#   add a DNS A record:  slotsure.ayushbaluni.in  ->  this VM's public IP
 bash deploy/setup-vm.sh          # run #2: builds + starts db + api + caddy, obtains TLS
 ```
 
-The API container migrates + seeds on boot. Verify: `curl https://api.yourdomain.com/readyz`.
+The API container migrates + seeds on boot. Verify: `curl https://slotsure.ayushbaluni.in/readyz`.
 Caddy (`deploy/Caddyfile`) obtains and renews Let's Encrypt TLS automatically for `API_DOMAIN`.
+Your **MCP URL** for Agentplace is then `https://slotsure.ayushbaluni.in/mcp`.
 
 **No domain?** Use a **Cloudflare Tunnel** instead of Caddy (no inbound ports, free TLS):
 `cloudflared tunnel --url http://localhost:3000` after `docker compose --profile full up -d` — but

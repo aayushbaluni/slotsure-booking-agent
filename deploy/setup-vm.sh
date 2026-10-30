@@ -7,6 +7,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.." # repo root
 COMPOSE="deploy/docker-compose.prod.yml"
 
+# Pre-filled on first run so deploy is zero-edit — change these two lines to use different hosts.
+API_DOMAIN_DEFAULT="slotsure.ayushbaluni.in"
+DASHBOARD_ORIGIN_DEFAULT="https://slotsure-admin.ayushbaluni.in"
+
 echo "==> SlotSure VM setup"
 
 # 1. Docker -------------------------------------------------------------------
@@ -30,13 +34,15 @@ if [ ! -f .env ]; then
   sed -i "s|^CODE_SECRET=.*|CODE_SECRET=$(gen 32)|" .env
   sed -i "s|^AGENT_ADAPTER=.*|AGENT_ADAPTER=mcp|" .env
   sed -i "s|^FAULTS_ENABLED=.*|FAULTS_ENABLED=true|" .env
-  cat <<'EOF'
+  sed -i "s|^API_DOMAIN=.*|API_DOMAIN=${API_DOMAIN_DEFAULT}|" .env
+  sed -i "s|^DASHBOARD_ORIGIN=.*|DASHBOARD_ORIGIN=${DASHBOARD_ORIGIN_DEFAULT}|" .env
+  cat <<EOF
 
-.env created with fresh secrets. Next:
-  1. Edit .env and set your API domain, e.g.:   API_DOMAIN=api.yourdomain.com
-     (optionally DASHBOARD_ORIGIN=https://admin.yourdomain.com for CORS)
-  2. Point that domain's DNS A record at THIS VM's public IP.
-  3. Re-run:   bash deploy/setup-vm.sh
+.env created with fresh secrets and API_DOMAIN=${API_DOMAIN_DEFAULT}. Next:
+  1. Add a DNS A record:  ${API_DOMAIN_DEFAULT}  ->  THIS VM's public IP
+     (and ${DASHBOARD_ORIGIN_DEFAULT#https://} -> same IP, if you serve the dashboard here)
+  2. Re-run:   bash deploy/setup-vm.sh
+  (To use a different host, edit API_DOMAIN in .env before step 2.)
 
 Your admin token (for the dashboard) and agent key (for Agentplace) are in .env.
 EOF
