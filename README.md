@@ -123,3 +123,15 @@ Controls + a server-side "Run the race") is built and wired to the admin API; op
 rest of Phase 4 (sample seed bookings so the schedule starts populated, demo video, deploy). The MCP
 adapter is intentionally stubbed with `TODO(Phase 1)`. The next weekday 19:00 IST slot is reserved as
 the **race-demo slot**.
+
+## Live
+
+- API + MCP: `https://slotsure.161-118-179-38.sslip.io` (MCP at `/mcp`)
+- Admin dashboard: `https://slotsure-admin.161-118-179-38.sslip.io`
+
+Deployed via `deploy/oracle/deploy.sh` (see `docs/DEPLOY.md`). It's a demo: all bookings are
+demonstrations, no real calendar or messages are touched.
+
+## License
+
+[MIT](LICENSE) © 2026 Ayush Baluni. Open source — fork it, learn from it, build on it.
