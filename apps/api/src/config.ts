@@ -15,7 +15,8 @@ const Env = z.object({
   CODE_SECRET: secret(),
   BUSINESS_TZ: z.string().default("Asia/Kolkata"),
   PORT: z.coerce.number().int().default(3000),
-  DASHBOARD_ORIGIN: z.string().url().default("http://localhost:5173"),
+  // one or more allowed dashboard origins (CORS), comma-separated
+  DASHBOARD_ORIGIN: z.string().default("http://localhost:5173"),
 
   // integration registry flags
   STORE: z.enum(["postgres"]).default("postgres"),

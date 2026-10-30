@@ -1,0 +1,10 @@
+# ── SlotSure dashboard ───────────────────────────────────────────────────────
+# Appended to gap-scout's Caddyfile by deploy.sh if slotsure-admin isn't present yet.
+slotsure-admin.161-118-179-38.sslip.io {
+	encode gzip
+	reverse_proxy slotsure-dashboard:80
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

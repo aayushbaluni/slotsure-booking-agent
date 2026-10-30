@@ -50,7 +50,7 @@ export async function buildServer() {
 
   await app.register(helmet);
   await app.register(cors, {
-    origin: cfg.DASHBOARD_ORIGIN,
+    origin: cfg.DASHBOARD_ORIGIN.split(",").map((s) => s.trim()),
     methods: ["GET", "POST", "PUT"],
     allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],
   });

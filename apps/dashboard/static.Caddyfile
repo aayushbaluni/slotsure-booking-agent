@@ -1,0 +1,8 @@
+# Internal static server for the built dashboard (SPA). The shared gap-scout Caddy reverse-proxies
+# to this on :80 over gap-scout_default and terminates HTTPS.
+:80 {
+	root * /srv
+	file_server
+	try_files {path} /index.html
+	encode gzip
+}

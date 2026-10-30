@@ -42,6 +42,9 @@ if [ ! -f .env ]; then
   echo "Created /opt/slotsure/.env with fresh secrets."
 fi
 
+# Ensure the API allows the deployed dashboard origin (and localhost) for CORS (idempotent).
+sed -i "s|^DASHBOARD_ORIGIN=.*|DASHBOARD_ORIGIN=https://slotsure-admin.161-118-179-38.sslip.io,http://localhost:5173|" .env
+
 cd /opt/slotsure/deploy/oracle
 docker compose up -d --build 2>&1 | tail -3
 
@@ -53,6 +56,15 @@ if [ -f "$GSCADDY" ] && ! grep -q "SlotSure" "$GSCADDY"; then
   docker exec gap-scout-caddy-1 caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
     || docker restart gap-scout-caddy-1
   echo "Added SlotSure route to gap-scout Caddy and reloaded."
+fi
+
+# Dashboard route (added once if the admin host isn't present yet).
+if [ -f "$GSCADDY" ] && ! grep -q "slotsure-admin" "$GSCADDY"; then
+  sudo cp "$GSCADDY" "$GSCADDY.bak.$(date +%s)"
+  sudo tee -a "$GSCADDY" < /opt/slotsure/deploy/oracle/Caddyfile.dashboard.snippet >/dev/null
+  docker exec gap-scout-caddy-1 caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
+    || docker restart gap-scout-caddy-1
+  echo "Added SlotSure dashboard route to gap-scout Caddy and reloaded."
 fi
 
 # wait for the container to migrate + seed + start (tsx cold start), then health-check

@@ -34,6 +34,16 @@ services:
     restart: unless-stopped
     networks: [slotsure_net, gap-scout_default] # app-only on the shared net so Caddy can reach it
 
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        VITE_API_URL: ${DASHBOARD_API_URL:-https://slotsure.161-118-179-38.sslip.io}
+    container_name: slotsure-dashboard
+    restart: unless-stopped
+    networks: [gap-scout_default] # static SPA reached by the shared Caddy by name
+
 networks:
   slotsure_net:
   gap-scout_default:
