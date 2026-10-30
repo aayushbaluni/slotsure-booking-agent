@@ -1,0 +1,12 @@
+# ── SlotSure ─────────────────────────────────────────────────────────────────
+# Appended to /opt/gap-scout/deploy/oracle/Caddyfile by deploy.sh (idempotent, keeps a backup).
+# Its container joins gap-scout_default so this Caddy reaches it by name.
+# For a zero-DNS host, change the line below to: slotsure.161-118-179-38.sslip.io
+slotsure.ayushbaluni.in {
+	encode gzip
+	reverse_proxy slotsure-api:3000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}

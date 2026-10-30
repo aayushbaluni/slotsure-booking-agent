@@ -43,40 +43,40 @@ Your MCP URL is then `https://slotsure-api.fly.dev/mcp` (bearer `AGENT_API_KEY`)
 - **Railway:** New Project → Deploy from repo (detects the Dockerfile) → add the Postgres plugin
   (injects `DATABASE_URL`) → set the same env vars. Region Singapore.
 
-## Option C — Oracle Cloud (or any Linux VM) with Docker Compose — recommended if you have one
+## Option C — the shared Oracle VM (`deploy/oracle/`) — this project's target
 
-An Oracle Cloud **Always Free** VM (Ampere A1 / ARM, up to 4 OCPU · 24 GB) is a great fit: a real
-always-on machine (never sleeps), free, with a public IP. The image is multi-arch and Prisma 7 + pg
-run on arm64 Linux, so it builds on the VM directly.
+The Oracle Always-Free VM (`ubuntu@161.118.179.38`) already runs a shared **gap-scout Caddy** that
+owns 80/443 and routes by hostname over the `gap-scout_default` Docker network (same box as atelier
+and gap-scout). SlotSure joins that network — it does **not** run its own Caddy.
 
-A one-shot script does the whole thing — Docker install, secret generation, and bringing up
-**Postgres + API + Caddy (auto-TLS)** via `deploy/docker-compose.prod.yml` (the API is not exposed
-directly; only Caddy serves 80/443).
-
-The script pre-sets `API_DOMAIN=slotsure.ayushbaluni.in` (change it in `deploy/setup-vm.sh` or in
-`.env` for a different host), so deploy is just: add DNS, run twice.
+- `deploy/oracle/docker-compose.yml` — `slotsure-db` + `slotsure-api` (no host ports); the api joins
+  `gap-scout_default` so Caddy reaches it by name. Lives in `/opt/slotsure` on the VM; Postgres data
+  in the `slotsure-pgdata` volume survives redeploys. The api container migrates + seeds on boot.
+- `deploy/oracle/Caddyfile.snippet` — the `slotsure.ayushbaluni.in` → `slotsure-api:3000` block,
+  appended once to `/opt/gap-scout/deploy/oracle/Caddyfile` (with a backup).
+- `deploy/oracle/deploy.sh` — from your machine: tars the source → `scp` to the VM → rebuild +
+  restart → install the Caddy route + reload → health check. Uses `~/.ssh/gapscout_oracle`.
 
 ```bash
-git clone <your-repo> slotsure && cd slotsure
-bash deploy/setup-vm.sh          # run #1: installs Docker + generates .env (API_DOMAIN pre-set), stops
-#   add a DNS A record:  slotsure.ayushbaluni.in  ->  this VM's public IP
-bash deploy/setup-vm.sh          # run #2: builds + starts db + api + caddy, obtains TLS
+bash deploy/oracle/deploy.sh      # ships, builds, starts, wires Caddy, checks /readyz
 ```
 
-The API container migrates + seeds on boot. Verify: `curl https://slotsure.ayushbaluni.in/readyz`.
-Caddy (`deploy/Caddyfile`) obtains and renews Let's Encrypt TLS automatically for `API_DOMAIN`.
-Your **MCP URL** for Agentplace is then `https://slotsure.ayushbaluni.in/mcp`.
+First run also generates `/opt/slotsure/.env` (mode 600) with fresh secrets and
+`AGENT_ADAPTER=mcp`. **MCP URL:** `https://slotsure.ayushbaluni.in/mcp` (bearer = that `AGENT_API_KEY`).
 
-**No domain?** Use a **Cloudflare Tunnel** instead of Caddy (no inbound ports, free TLS):
-`cloudflared tunnel --url http://localhost:3000` after `docker compose --profile full up -d` — but
-a stable named tunnel still needs a Cloudflare-managed domain.
+**DNS:** add a GoDaddy **A** record `slotsure` → `161.118.179.38`. Or skip DNS entirely by changing
+the hostname in `Caddyfile.snippet` to `slotsure.161-118-179-38.sslip.io` (sslip.io auto-resolves,
+like the other apps on this box).
 
-**Oracle-specific gotchas (these bite everyone):**
-- Open **80/443** in the OCI **Security List / NSG** (ingress rules) for the subnet.
-- The instance's own firewall usually blocks by default — on Ubuntu images Oracle ships `iptables`
-  rules; add ACCEPT for 80/443 and persist (`netfilter-persistent save`), or use `ufw allow`.
-- Prefer the **A1 (ARM)** shape over the AMD micro — Postgres + Node want more than 1 GB.
-- Keep Postgres data on a block volume or the compose named volume (`slotsure-pgdata`) so it survives
+**Ports:** 80/443 are already open on this VM (gap-scout uses them), so there's nothing new to open.
+
+**Other VMs (fresh, no gap-scout):** run your own Caddy/Cloudflare Tunnel for TLS; this `deploy/oracle`
+set assumes the shared gap-scout Caddy is present.
+
+<!-- gotchas kept for reference -->
+Reference gotchas for a *fresh* Oracle VM (not needed here, since gap-scout already handled them):
+- Open **80/443** in the OCI **Security List / NSG** and the instance firewall (`iptables`/`ufw`).
+- Prefer the **A1 (ARM)** shape; keep Postgres data on a named volume so it survives
   redeploys.
 
 ## Dashboard (static, optional)

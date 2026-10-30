@@ -1,0 +1,43 @@
+# SlotSure on the shared Oracle VM — mirrors the atelier/gap-scout pattern. No host ports: the
+# shared gap-scout Caddy reaches slotsure-api by name over gap-scout_default and terminates HTTPS
+# (see Caddyfile.snippet). Postgres stays on a private network. Run via deploy/oracle/deploy.sh.
+services:
+  db:
+    image: postgres:16
+    container_name: slotsure-db
+    environment:
+      POSTGRES_USER: slotsure
+      POSTGRES_PASSWORD: slotsure
+      POSTGRES_DB: slotsure
+    volumes:
+      - slotsure-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slotsure -d slotsure"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [slotsure_net]
+
+  api:
+    build:
+      context: ../.. # repo root on the VM (/opt/slotsure)
+      dockerfile: apps/api/Dockerfile
+    container_name: slotsure-api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: ../../.env # /opt/slotsure/.env (mode 600 on the VM)
+    environment:
+      DATABASE_URL: postgresql://slotsure:slotsure@slotsure-db:5432/slotsure?schema=public
+      PORT: "3000"
+    restart: unless-stopped
+    networks: [slotsure_net, gap-scout_default] # app-only on the shared net so Caddy can reach it
+
+networks:
+  slotsure_net:
+  gap-scout_default:
+    external: true
+
+volumes:
+  slotsure-pgdata:
