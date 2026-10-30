@@ -49,28 +49,23 @@ An Oracle Cloud **Always Free** VM (Ampere A1 / ARM, up to 4 OCPU · 24 GB) is a
 always-on machine (never sleeps), free, with a public IP. The image is multi-arch and Prisma 7 + pg
 run on arm64 Linux, so it builds on the VM directly.
 
+A one-shot script does the whole thing — Docker install, secret generation, and bringing up
+**Postgres + API + Caddy (auto-TLS)** via `deploy/docker-compose.prod.yml` (the API is not exposed
+directly; only Caddy serves 80/443).
+
 ```bash
-# on the VM (Ubuntu): install Docker + compose plugin
-curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # re-login after
-
 git clone <your-repo> slotsure && cd slotsure
-cp .env.example .env     # fill in the 4 secrets; set AGENT_ADAPTER=mcp, FAULTS_ENABLED=true
-                         # leave DATABASE_URL pointing at the compose db (host "db")
-
-docker compose --profile full up -d --build   # starts postgres + the api container
-#   the api container migrates + seeds on boot; check: curl localhost:3000/readyz
+bash deploy/setup-vm.sh          # run #1: installs Docker + generates .env secrets, then stops
+#   edit .env -> set API_DOMAIN=api.yourdomain.com ; point its DNS A record at this VM's public IP
+bash deploy/setup-vm.sh          # run #2: builds + starts db + api + caddy, obtains TLS
 ```
 
-**HTTPS (Agentplace needs `https://<host>/mcp`)** — pick one:
+The API container migrates + seeds on boot. Verify: `curl https://api.yourdomain.com/readyz`.
+Caddy (`deploy/Caddyfile`) obtains and renews Let's Encrypt TLS automatically for `API_DOMAIN`.
 
-- **Caddy reverse proxy** (auto Let's Encrypt). Point a domain's A record at the VM's public IP, then:
-  ```bash
-  docker run -d --name caddy --network host \
-    -v $PWD/Caddyfile:/etc/caddy/Caddyfile -v caddy_data:/data caddy
-  ```
-  `Caddyfile`: `api.yourdomain.com { reverse_proxy localhost:3000 }`
-- **Cloudflare Tunnel** — no inbound ports to open; free TLS; needs a Cloudflare-managed domain.
-  `cloudflared tunnel --url http://localhost:3000` (or a named tunnel for a stable hostname).
+**No domain?** Use a **Cloudflare Tunnel** instead of Caddy (no inbound ports, free TLS):
+`cloudflared tunnel --url http://localhost:3000` after `docker compose --profile full up -d` — but
+a stable named tunnel still needs a Cloudflare-managed domain.
 
 **Oracle-specific gotchas (these bite everyone):**
 - Open **80/443** in the OCI **Security List / NSG** (ingress rules) for the subnet.
