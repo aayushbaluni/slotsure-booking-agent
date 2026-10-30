@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: slotsure
+          POSTGRES_PASSWORD: slotsure
+          POSTGRES_DB: slotsure
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U slotsure -d slotsure"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://slotsure:slotsure@localhost:5432/slotsure?schema=public
+      # test-only secrets (≥32 bytes); real secrets live in the host's secret store
+      AGENT_API_KEY: ci-agent-key-0000000000000000000000000000
+      ADMIN_TOKEN: ci-admin-token-000000000000000000000000000
+      QUOTE_SECRET: ci-quote-secret-00000000000000000000000000
+      CODE_SECRET: ci-code-secret-000000000000000000000000000
+      FAULTS_ENABLED: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: corepack enable
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build design tokens
+        run: pnpm design:build
+
+      - name: Lint (core boundary rule)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Apply migrations + seed
+        run: |
+          pnpm --filter @slotsure/api exec prisma migrate deploy
+          pnpm --filter @slotsure/api db:seed
+
+      - name: Test (unit + integration against Postgres)
+        run: pnpm --filter @slotsure/api test
+
+      - name: Build
+        run: pnpm build
+
+      # Secret scanning — fails the build if a credential is committed.
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

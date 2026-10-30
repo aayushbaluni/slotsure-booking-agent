@@ -1,0 +1,17 @@
+/* Generated design tokens (CSS variables per [data-theme]) — run `pnpm design:build`. */
+@import "@slotsure/shared/design/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text-primary);
+  font-family: "Inter", system-ui, sans-serif;
+}

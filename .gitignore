@@ -1,0 +1,33 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# prisma generated client
+apps/api/src/generated/
+apps/api/prisma/*.db
+
+# test / coverage
+coverage/
+test-results/
+playwright-report/
+.playwright/
+
+# generated design tokens (built from tokens.ts)
+packages/shared/src/design/tokens.css
+packages/shared/src/design/tailwind-preset.js
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

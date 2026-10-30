@@ -1,0 +1,27 @@
+{
+  "name": "@slotsure/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ports": "./src/ports/index.ts",
+    "./design": "./src/design/tokens.ts",
+    "./design/tokens.css": "./src/design/tokens.css",
+    "./design/tailwind-preset": "./src/design/tailwind-preset.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(lint configured in CI)\"",
+    "design:build": "tsx scripts/build-design.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0"
+  }
+}

@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    container_name: slotsure-db
+    environment:
+      POSTGRES_USER: slotsure
+      POSTGRES_PASSWORD: slotsure
+      POSTGRES_DB: slotsure
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - slotsure-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slotsure -d slotsure"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: slotsure-api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://slotsure:slotsure@db:5432/slotsure?schema=public
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    profiles: ["full"] # `docker compose up -d db` for dev; `--profile full` to run the API too
+
+volumes:
+  slotsure-pgdata:
