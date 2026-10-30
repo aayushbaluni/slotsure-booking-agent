@@ -9,6 +9,11 @@ import { PrismaClient } from "@prisma/client";
 export const STATEMENT_TIMEOUT_MS = 3000;
 export const PG_SESSION_OPTIONS = `-c statement_timeout=${STATEMENT_TIMEOUT_MS}`;
 
+/** The write pool additionally sets a short lock_timeout so a contended insert (exclusion-constraint
+ *  conflict wait) fails fast with a retryable error (55P03) instead of blocking to the statement
+ *  timeout — the createBooking retry loop then cycles quickly under concurrency. */
+export const WRITE_POOL_OPTIONS = `-c statement_timeout=${STATEMENT_TIMEOUT_MS} -c lock_timeout=1500`;
+
 /**
  * Prisma 7 client created with the pg driver adapter. A raw `pg` Pool is also used for the
  * race-safe write path (explicit SAVEPOINT/RELEASE/ROLLBACK TO); both carry the statement timeout.

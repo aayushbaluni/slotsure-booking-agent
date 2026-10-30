@@ -43,6 +43,43 @@ Your MCP URL is then `https://slotsure-api.fly.dev/mcp` (bearer `AGENT_API_KEY`)
 - **Railway:** New Project → Deploy from repo (detects the Dockerfile) → add the Postgres plugin
   (injects `DATABASE_URL`) → set the same env vars. Region Singapore.
 
+## Option C — Oracle Cloud (or any Linux VM) with Docker Compose — recommended if you have one
+
+An Oracle Cloud **Always Free** VM (Ampere A1 / ARM, up to 4 OCPU · 24 GB) is a great fit: a real
+always-on machine (never sleeps), free, with a public IP. The image is multi-arch and Prisma 7 + pg
+run on arm64 Linux, so it builds on the VM directly.
+
+```bash
+# on the VM (Ubuntu): install Docker + compose plugin
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # re-login after
+
+git clone <your-repo> slotsure && cd slotsure
+cp .env.example .env     # fill in the 4 secrets; set AGENT_ADAPTER=mcp, FAULTS_ENABLED=true
+                         # leave DATABASE_URL pointing at the compose db (host "db")
+
+docker compose --profile full up -d --build   # starts postgres + the api container
+#   the api container migrates + seeds on boot; check: curl localhost:3000/readyz
+```
+
+**HTTPS (Agentplace needs `https://<host>/mcp`)** — pick one:
+
+- **Caddy reverse proxy** (auto Let's Encrypt). Point a domain's A record at the VM's public IP, then:
+  ```bash
+  docker run -d --name caddy --network host \
+    -v $PWD/Caddyfile:/etc/caddy/Caddyfile -v caddy_data:/data caddy
+  ```
+  `Caddyfile`: `api.yourdomain.com { reverse_proxy localhost:3000 }`
+- **Cloudflare Tunnel** — no inbound ports to open; free TLS; needs a Cloudflare-managed domain.
+  `cloudflared tunnel --url http://localhost:3000` (or a named tunnel for a stable hostname).
+
+**Oracle-specific gotchas (these bite everyone):**
+- Open **80/443** in the OCI **Security List / NSG** (ingress rules) for the subnet.
+- The instance's own firewall usually blocks by default — on Ubuntu images Oracle ships `iptables`
+  rules; add ACCEPT for 80/443 and persist (`netfilter-persistent save`), or use `ufw allow`.
+- Prefer the **A1 (ARM)** shape over the AMD micro — Postgres + Node want more than 1 GB.
+- Keep Postgres data on a block volume or the compose named volume (`slotsure-pgdata`) so it survives
+  redeploys.
+
 ## Dashboard (static, optional)
 
 ```bash

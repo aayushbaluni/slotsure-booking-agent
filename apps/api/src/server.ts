@@ -35,6 +35,19 @@ export async function buildServer() {
     requestTimeout: 8000,
   });
 
+  // Treat an empty application/json body as {} instead of erroring — bodyless POSTs like
+  // /admin/reset and /admin/run-race are valid; a client that sends the JSON content-type with no
+  // body (curl -X POST, some HTTP clients) shouldn't get a 400.
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+    if (!body || (body as string).trim() === "") return done(null, {});
+    try {
+      done(null, JSON.parse(body as string));
+    } catch (err) {
+      (err as { statusCode?: number }).statusCode = 400;
+      done(err as Error, undefined);
+    }
+  });
+
   await app.register(helmet);
   await app.register(cors, {
     origin: cfg.DASHBOARD_ORIGIN,

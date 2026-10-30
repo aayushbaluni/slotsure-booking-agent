@@ -15,8 +15,10 @@ import type {
   StaffData,
 } from "@slotsure/shared/ports";
 import type { BookingStatus } from "@slotsure/shared";
-import { createPrisma, PG_SESSION_OPTIONS } from "./prisma.js";
-import { isExclusionViolation, isUniqueViolation } from "./errors.js";
+import { createPrisma, WRITE_POOL_OPTIONS } from "./prisma.js";
+import { isExclusionViolation, isUniqueViolation, isRetryableTxError } from "./errors.js";
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
  * The only adapter that touches Postgres. Reads go through Prisma; the write path uses a raw pg
@@ -32,7 +34,7 @@ export class PrismaPgRepository implements RepositoryPort {
 
   static create(databaseUrl: string): PrismaPgRepository {
     // the write-path pool carries the same statement timeout as the Prisma (read) adapter
-    const pool = new Pool({ connectionString: databaseUrl, options: PG_SESSION_OPTIONS });
+    const pool = new Pool({ connectionString: databaseUrl, options: WRITE_POOL_OPTIONS });
     return new PrismaPgRepository(createPrisma(databaseUrl), pool);
   }
 
@@ -122,7 +124,25 @@ export class PrismaPgRepository implements RepositoryPort {
 
   // ---- race-safe write path (raw pg + savepoints) ----
 
+  /** Retries the transaction on a deadlock / serialization failure (nothing committed, so it is
+   *  safe). Exclusion constraints can deadlock under concurrency — this keeps the write correct
+   *  under load (proven by race.test.ts T-C5a). */
   async createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
+    const MAX_ATTEMPTS = 8;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        return await this.attemptCreateBooking(input);
+      } catch (err) {
+        if (!isRetryableTxError(err)) throw err;
+        lastErr = err;
+        await sleep(5 * 2 ** attempt + Math.floor(Math.random() * 10)); // small jittered backoff
+      }
+    }
+    throw lastErr;
+  }
+
+  private async attemptCreateBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
     const { payload } = input;
     const startsAt = new Date(payload.start);
     const endsAt = new Date(startsAt.getTime() + payload.duration_mins * 60_000);
