@@ -1,8 +1,9 @@
 # ── SlotSure ─────────────────────────────────────────────────────────────────
 # Appended to /opt/gap-scout/deploy/oracle/Caddyfile by deploy.sh (idempotent, keeps a backup).
 # Its container joins gap-scout_default so this Caddy reaches it by name.
-# For a zero-DNS host, change the line below to: slotsure.161-118-179-38.sslip.io
-slotsure.ayushbaluni.in {
+# sslip.io auto-resolves to 161.118.179.38 (no DNS config). For a branded host, change this line
+# to slotsure.ayushbaluni.in and add a GoDaddy A record: slotsure -> 161.118.179.38
+slotsure.161-118-179-38.sslip.io {
 	encode gzip
 	reverse_proxy slotsure-api:3000
 	header {

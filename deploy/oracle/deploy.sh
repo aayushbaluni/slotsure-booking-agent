@@ -38,7 +38,6 @@ if [ ! -f .env ]; then
   sed -i "s|^CODE_SECRET=.*|CODE_SECRET=$(gen 32)|" .env
   sed -i "s|^AGENT_ADAPTER=.*|AGENT_ADAPTER=mcp|" .env
   sed -i "s|^FAULTS_ENABLED=.*|FAULTS_ENABLED=true|" .env
-  sed -i "s|^DASHBOARD_ORIGIN=.*|DASHBOARD_ORIGIN=https://slotsure-admin.ayushbaluni.in|" .env
   chmod 600 .env
   echo "Created /opt/slotsure/.env with fresh secrets."
 fi
@@ -56,13 +55,16 @@ if [ -f "$GSCADDY" ] && ! grep -q "SlotSure" "$GSCADDY"; then
   echo "Added SlotSure route to gap-scout Caddy and reloaded."
 fi
 
-sleep 5
-echo "readyz (internal):"
-docker exec gap-scout-caddy-1 wget -qO- http://slotsure-api:3000/readyz || true
+# wait for the container to migrate + seed + start (tsx cold start), then health-check
+echo "waiting for slotsure-api…"
+for i in $(seq 1 30); do
+  if docker exec gap-scout-caddy-1 wget -qO- http://slotsure-api:3000/readyz 2>/dev/null; then echo " <- ready"; break; fi
+  sleep 2
+done
 echo
 REMOTE
 
 echo
-echo "Done. Once DNS + ports 80/443 are ready:"
-echo "  https://slotsure.ayushbaluni.in/readyz   -> {\"ok\":true}"
-echo "  MCP URL: https://slotsure.ayushbaluni.in/mcp   (bearer = AGENT_API_KEY in /opt/slotsure/.env)"
+echo "Done."
+echo "  https://slotsure.161-118-179-38.sslip.io/readyz   -> {\"ok\":true}"
+echo "  MCP URL: https://slotsure.161-118-179-38.sslip.io/mcp   (bearer = AGENT_API_KEY in /opt/slotsure/.env)"
