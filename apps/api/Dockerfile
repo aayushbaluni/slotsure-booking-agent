@@ -16,5 +16,5 @@ FROM base AS runtime
 COPY --from=build /app /app
 WORKDIR /app/apps/api
 EXPOSE 3000
-# run migrations then start; /readyz gates traffic
-CMD ["sh", "-c", "pnpm db:migrate && node dist/server.js"]
+# migrate, then seed the business profile (upserts — idempotent), then start. /readyz gates traffic.
+CMD ["sh", "-c", "pnpm db:migrate && pnpm db:seed && node dist/server.js"]

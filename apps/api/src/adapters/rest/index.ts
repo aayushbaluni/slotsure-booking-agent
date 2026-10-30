@@ -31,8 +31,16 @@ function envelope<T>(req: FastifyRequest, result: CoreResult<T>) {
 export async function registerRest(app: FastifyInstance, deps: RestDeps): Promise<void> {
   const { core } = deps;
 
-  app.get("/healthz", async () => ({ ok: true }));
-  app.get("/readyz", async () => ({ ok: true })); // TODO(Phase 3+): DB reachable + migrations applied
+  app.get("/healthz", async () => ({ ok: true })); // process alive
+  app.get("/readyz", async (_req, reply) => {
+    // DB reachable (a cheap query) — gates traffic on deploy (build spec §8)
+    try {
+      await deps.repository.currentGeneration();
+      return { ok: true };
+    } catch {
+      return reply.code(503).send({ ok: false, error: { code: "UNAVAILABLE" }, say: "Starting up." });
+    }
+  });
 
   app.register(
     async (v1) => {
@@ -71,5 +79,6 @@ export async function registerRest(app: FastifyInstance, deps: RestDeps): Promis
     faultsEnabled: deps.faultsEnabled,
     faults: deps.faults,
     repository: deps.repository,
+    core: deps.core,
   });
 }

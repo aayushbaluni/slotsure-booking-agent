@@ -126,6 +126,23 @@ describe.skipIf(!url)("phase 3: reliability over HTTP (real Postgres)", () => {
     expect(lastCode).toBe("RATE_LIMITED");
   });
 
+  it("admin /status reports fault, capacity and generation (dashboard)", async () => {
+    const r = JSON.parse((await app.inject({ method: "GET", url: "/admin/status", headers: { authorization: `Bearer ${ADMIN}` } })).body);
+    expect(r.ok).toBe(true);
+    expect(r.data.capacity).toBe(200);
+    expect(typeof r.data.activeBookings).toBe("number");
+    expect(typeof r.data.generation).toBe("number");
+    expect(r.data.fault).toHaveProperty("mode");
+  });
+
+  it("admin /run-race: 10 parallel confirms at one slot → exactly 1 created, 9 rejected", async () => {
+    await setFault("none");
+    const r = JSON.parse((await app.inject({ method: "POST", url: "/admin/run-race", headers: { authorization: `Bearer ${ADMIN}` } })).body);
+    expect(r.ok).toBe(true);
+    expect(r.data.created).toBe(1);
+    expect(r.data.created + r.data.rejected).toBe(10);
+  });
+
   it("event log records created and lookup_denied", async () => {
     // self-contained: create a booking so a 'created' event exists after the earlier reset
     await app.inject({ method: "POST", url: "/v1/bookings", payload: confirmPayload(await quote(await free())) });

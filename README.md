@@ -115,7 +115,11 @@ are gitignored, so a fresh clone runs `pnpm design:build` before building the da
 
 Phases 0–3 done: contracts/ports, the booking core and full journey, the race-safe write path, and
 reliability (concurrency, replay, reset, faults, rate limits, timeouts, event log) — all verified by
-unit + integration tests. **Still ahead:** Phase 1 platform spike + the agent-facing adapter (MCP
-built only if needed), and **Phase 4** (dashboard views, sample seed data, demo video, deploy). The
-MCP adapter and dashboard views are intentionally stubbed with `TODO(Phase N)` markers citing the
-owning spec section. The next weekday 19:00 IST slot is reserved as the **race-demo slot**.
+unit + integration tests. **Phase 4 in progress:** the admin dashboard (Schedule / Bookings / Events /
+Controls + a server-side "Run the race") is built and wired to the admin API; open it with
+`pnpm --filter @slotsure/dashboard dev` and enter the `ADMIN_TOKEN`.
+
+**Still ahead:** Phase 1 platform spike + the agent-facing adapter (MCP built only if needed), and the
+rest of Phase 4 (sample seed bookings so the schedule starts populated, demo video, deploy). The MCP
+adapter is intentionally stubbed with `TODO(Phase 1)`. The next weekday 19:00 IST slot is reserved as
+the **race-demo slot**.

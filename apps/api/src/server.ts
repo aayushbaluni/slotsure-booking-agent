@@ -36,7 +36,11 @@ export async function buildServer() {
   });
 
   await app.register(helmet);
-  await app.register(cors, { origin: cfg.DASHBOARD_ORIGIN });
+  await app.register(cors, {
+    origin: cfg.DASHBOARD_ORIGIN,
+    methods: ["GET", "POST", "PUT"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],
+  });
   await app.register(requestContext);
   await app.register(errorHandler);
 
@@ -49,7 +53,13 @@ export async function buildServer() {
     faultsEnabled: cfg.FAULTS_ENABLED,
   });
 
-  // if (cfg.AGENT_ADAPTER === "mcp") { await mount /mcp — build only after Phase 1 }
+  // Agent-facing MCP adapter — mounted when AGENT_ADAPTER=mcp (Phase 1 picks the connection type).
+  // REST (/v1) always exists for the dashboard and tests, and also serves the agent if Phase 1
+  // chooses API integration instead.
+  if (cfg.AGENT_ADAPTER === "mcp") {
+    const { registerMcp } = await import("./adapters/mcp/index.js");
+    await registerMcp(app, { core, apiKey: cfg.AGENT_API_KEY });
+  }
 
   // release the repository's connection pool when the server closes (tests + graceful shutdown)
   app.addHook("onClose", async () => {

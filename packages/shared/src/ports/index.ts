@@ -240,4 +240,6 @@ export type FaultMode = "none" | "latency" | "error_503" | "fail_after_commit";
 export interface FaultPort {
   current(tool: string): FaultMode;
   set(mode: FaultMode, tools: string[], ttlS: number): void;
+  /** current armed fault for display in the dashboard Controls view. */
+  status(): { mode: FaultMode; tools: string[]; expiresAt: number | null };
 }

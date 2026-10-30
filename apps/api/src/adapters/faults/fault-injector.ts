@@ -27,4 +27,9 @@ export class FaultInjector implements FaultPort {
     if (!this.enabled) return;
     this.armed = mode === "none" ? null : { mode, tools: new Set(tools), expiresAt: Date.now() + ttlS * 1000 };
   }
+
+  status(): { mode: FaultMode; tools: string[]; expiresAt: number | null } {
+    if (!this.armed || Date.now() > this.armed.expiresAt) return { mode: "none", tools: [], expiresAt: null };
+    return { mode: this.armed.mode, tools: [...this.armed.tools], expiresAt: this.armed.expiresAt };
+  }
 }
